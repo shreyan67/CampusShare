@@ -23,7 +23,9 @@ INSERT INTO colleges (name, domain) VALUES
   ('VIT Vellore',         'mail.vit.ac.in'),
   ('Anna University',     'mail.annauniv.edu'),
   ('Delhi University',    'mail.du.ac.in'),
-  ('Jadavpur University', 'mail.jadavpur.edu')
+  ('Jadavpur University', 'mail.jadavpur.edu'),
+  ('JIIT',                'mail.jiit.ac.in')
+
 ON CONFLICT (domain) DO NOTHING;
 
 -- Users

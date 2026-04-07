@@ -1,4 +1,4 @@
-const BASE = '/api'
+const BASE = 'campusshare-backend-zht7.onrender.com'
 
 const getToken = () => localStorage.getItem('cs_token')
 const saveToken = t => localStorage.setItem('cs_token', t)

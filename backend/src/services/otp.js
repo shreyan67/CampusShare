@@ -47,7 +47,7 @@ function smtpReady() {
 // ── SEND EMAIL ─────────────────────────────
 async function sendOtpEmail(email, name, otp) {
   // DEV MODE
-  if (!smtpReady()) {
+  if (false) {
     console.log('\n╔══════════════════════════════════════╗')
     console.log(`║  OTP for ${name.padEnd(26)}║`)
     console.log(`║  Email : ${email.padEnd(26)}║`)

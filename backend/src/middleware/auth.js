@@ -1,0 +1,17 @@
+require('dotenv').config()
+const jwt = require('jsonwebtoken')
+
+function requireAuth(req, res, next) {
+  const token = (req.headers.authorization || '').replace('Bearer ', '')
+  if (!token) return res.status(401).json({ error: 'Not logged in.' })
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET)
+    req.userId    = payload.sub
+    req.collegeId = payload.collegeId
+    next()
+  } catch {
+    res.status(401).json({ error: 'Session expired. Please log in again.' })
+  }
+}
+
+module.exports = { requireAuth }

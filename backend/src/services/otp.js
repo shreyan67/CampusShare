@@ -89,6 +89,7 @@ async function sendOtpEmail(email, name, otp) {
     console.error('❌ Email sending failed:', err)
     return { devOtp: otp } // fallback
   }
+  console.log("Sending OTP to:", email)
 }
 
 module.exports = {

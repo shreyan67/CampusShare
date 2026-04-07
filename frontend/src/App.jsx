@@ -111,7 +111,7 @@ function AuthScreen({ onLogin }) {
     setLoading(true)
     const r = await api.login(fields.email.trim())
     setLoading(false)
-    if (r.error) return setErr(r.error)
+    if (!r ||r.error) return setErr(r.error)
     setPending({ userId: r.userId })
     if (r._otp) setConsoleOtp(r._otp)
     setMode('otp')

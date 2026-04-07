@@ -5,7 +5,18 @@ const cors    = require('cors')
 const app = express()
 const PORT = process.env.PORT || 4000
 
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }))
+
+
+app.use(cors({
+  origin: [
+    ,              // local frontend
+    'http://localhost:3000',   
+    'http://localhost:5173',           // sometimes used
+    'https://campusshare-frontend.onrender.com' // 🔥 YOUR DEPLOYED FRONTEND
+  ],
+  credentials: true
+}))
+app.options('*', cors())
 app.use(express.json({ limit: '20mb' }))   // large limit for base64 images
 app.use(express.urlencoded({ extended: true }))
 

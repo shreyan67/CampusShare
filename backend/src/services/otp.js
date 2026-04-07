@@ -41,7 +41,8 @@ async function verifyOtp(userId, otp) {
 
 // ── SMTP CHECK ─────────────────────────────
 function smtpReady() {
-  return process.env.SMTP_USER && process.env.SMTP_PASS
+  // return process.env.SMTP_USER && process.env.SMTP_PASS
+  return false
 }
 
 // ── SEND EMAIL ─────────────────────────────

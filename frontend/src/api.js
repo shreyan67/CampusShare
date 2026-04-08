@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api"  
+const BASE = "http://localhost:3000/api" || import.meta.env.VITE_API_URL
 
 const getToken = () => localStorage.getItem('cs_token')
 const saveToken = t => localStorage.setItem('cs_token', t)

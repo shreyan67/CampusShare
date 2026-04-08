@@ -1,7 +1,10 @@
 require('dotenv').config()
 const bcrypt = require('bcryptjs')
-const nodemailer = require('nodemailer')
 const { query, queryOne } = require('../db/pool')
+const { Resend } = require('resend')
+
+// ✅ CREATE INSTANCE
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 // ── OTP GENERATION ─────────────────────────
 function generateOtp() {
@@ -39,47 +42,21 @@ async function verifyOtp(userId, otp) {
   return true
 }
 
-// ── SMTP CHECK ─────────────────────────────
-function smtpReady() {
-  // return process.env.SMTP_USER && process.env.SMTP_PASS
-  return false
-}
-
-// ── SEND EMAIL ─────────────────────────────
+// ── SEND EMAIL (RESEND) ────────────────────
 async function sendOtpEmail(email, name, otp) {
-  // DEV MODE
-  if (false) {
-    console.log('\n╔══════════════════════════════════════╗')
-    console.log(`║  OTP for ${name.padEnd(26)}║`)
-    console.log(`║  Email : ${email.padEnd(26)}║`)
-    console.log(`║  Code  : ${otp.padEnd(26)}  ║`)
-    console.log('╚══════════════════════════════════════╝\n')
-    return { devOtp: otp }
-  }
-
   try {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    })
+    console.log("Sending OTP via Resend to:", email)
 
-    await transporter.verify()
-
-    await transporter.sendMail({
-      from: `"CampusShare" <${process.env.SMTP_USER}>`,
+    await resend.emails.send({
+      from: 'onboarding@resend.dev',
       to: email,
-      subject: `CampusShare verification code: ${otp}`,
+      subject: `CampusShare verification code`,
       html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px">
+        <div style="font-family:sans-serif">
           <h2>Hi ${name},</h2>
-          <p style="color:#555">Your one-time code for CampusShare:</p>
-          <div style="font-size:40px;font-weight:800;letter-spacing:0.25em;background:#f5f5f5;
-                      padding:20px;border-radius:10px;text-align:center;margin:24px 0;
-                      color:#e94560">${otp}</div>
-          <p style="color:#888;font-size:13px">Expires in 5 minutes. Never share this code.</p>
+          <p>Your OTP is:</p>
+          <h1>${otp}</h1>
+          <p>Valid for 5 minutes</p>
         </div>
       `,
     })
@@ -87,16 +64,14 @@ async function sendOtpEmail(email, name, otp) {
     return {}
 
   } catch (err) {
-    console.error('❌ Email sending failed:', err)
+    console.error("❌ Resend error:", err)
     return { devOtp: otp } // fallback
   }
-  console.log("Sending OTP to:", email)
 }
 
 module.exports = {
   generateOtp,
   storeOtp,
   verifyOtp,
-  sendOtpEmail,
-  smtpReady,
+  sendOtpEmail
 }

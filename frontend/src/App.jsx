@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react'
 // useRef is still used in ListItemModal for title/notes inputs which don't have the remount problem
 import * as api from './api.js'
-
+import Admin from "./pages/Admin";
 // ── FONTS ─────────────────────────────────────────────────────────────────────
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap');`
 
@@ -747,6 +747,7 @@ function ItemCard({ item, currentUserId, onRequest, myRequests = [] }) {
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState(false);
   const [user,    setUser]   = useState(()=>api.getSavedUser())
   const [tab,     setTab]    = useState('marketplace') // 'marketplace' | 'lostfound'
   const [items,   setItems]  = useState([])
@@ -788,6 +789,7 @@ api.getItems({
   function handleLogout() { api.clearSession(); setUser(null) }
 
   if (!user) return <AuthScreen onLogin={u=>setUser(u)} />
+  if (isAdmin) return <Admin />;
 
   const CAT_COUNTS = CATEGORIES.reduce((a,c)=>{ a[c]=items.filter(i=>i.category===c).length; return a },{})
   const tier = TRUST_TIERS[user.trust_tier] || TRUST_TIERS.newcomer
@@ -813,6 +815,7 @@ api.getItems({
             </div>
             <button style={btn(false)} onClick={()=>setAct(true)}>Activity</button>
             <button style={btn(true)}  onClick={()=>setList(true)}>+ List Item</button>
+            <button style={btn(false)} onClick={()=>setIsAdmin(true)}>Admin</button>
             <button style={{ ...btn(false), fontSize:11 }} onClick={handleLogout}>Sign out</button>
           </div>
         </div>

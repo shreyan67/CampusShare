@@ -19,7 +19,7 @@ const STATUS_MAP = {
   available:       { bg:'#eaf3de', color:'#3B6D11', label:'Available'       },
   borrowed:        { bg:'#FAEEDA', color:'#854F0B', label:'Borrowed'        },
   pending:         { bg:'#FAEEDA', color:'#854F0B', label:'Pending'         },
-  payment_pending: { bg:'#FCEBEB', color:'#A32D2D', label:'Payment Pending' },
+  selected: { bg:'#E6F1FB', color:'#185FA5', label:'Selected' },
   active:          { bg:'#E6F1FB', color:'#185FA5', label:'Active'          },
   returned:        { bg:'#eaf3de', color:'#3B6D11', label:'Returned'        },
   declined:        { bg:'#FCEBEB', color:'#A32D2D', label:'Declined'        },
@@ -237,13 +237,14 @@ async function doSignup() {
                 autoComplete="off"
               />
             </div>
-           <button
-         type="button"
-              style={{ ...btn(true), width:'100%', padding:'10px' }}
-            onClick={doSignup}
-            disabled={loading}
-                >
-            </button>
+         <button
+  type="button"
+  style={{ ...btn(true), width:'100%', padding:'10px' }}
+  onClick={doSignup}
+  disabled={loading}
+>
+  {loading ? 'Sending code…' : 'Sign up →'}
+</button>
             <p style={{ fontSize:12, color:'#666', textAlign:'center', marginTop:14 }}>
               Have an account? <span style={{ color:A, cursor:'pointer' }} onClick={()=>switchMode('login')}>Sign in</span>
             </p>
@@ -492,7 +493,7 @@ function ActivityModal({ open, onClose, refresh, showToast }) {
   const lending   = reqs.filter(r=>r.owner_id===user?.id)
   const tier = TRUST_TIERS[user?.trust_tier]||TRUST_TIERS.newcomer
 const activeCount = borrowing.filter(r =>
-  r.status === 'active' || r.status === 'payment_pending'
+  ['active','selected'].includes(r.status)
 ).length
 
   function TabBtn({ id, label, count }) {
@@ -530,7 +531,7 @@ const activeCount = borrowing.filter(r =>
         )}
 
         {/* Paid info for borrower */}
-        {isBorrowing && r.status==='payment_pending' && (
+        {isBorrowing && r.status==='selected' && (
           <div style={{ padding:'8px 10px', background:'#FCEBEB', borderRadius:6, fontSize:12, color:'#A32D2D', marginBottom:8 }}>
             Pay <strong>₹{r.total_amount}</strong> to {r.owner_name} (cash or UPI), then click below.
           </div>
@@ -538,7 +539,7 @@ const activeCount = borrowing.filter(r =>
 
         {/* Action buttons */}
         <div style={row(6)}>
-          {isBorrowing && r.status==='payment_pending' && (
+          {isBorrowing && r.status==='selected' && (
             <button style={btn(true,true)} onClick={async()=>{ const res=await act(api.confirmPayment,r.id); if(res&&!res.error) showToast('Payment confirmed! Waiting for owner approval.') }}>I've paid ₹{r.total_amount}</button>
           )}
           {!isBorrowing && r.status==='pending' && (
@@ -570,8 +571,23 @@ const activeCount = borrowing.filter(r =>
   Approve
 </button>
               <button style={btn(false,true)} onClick={async()=>{ await act(api.declineRequest,r.id); showToast('Declined.') }}>Decline</button>
-            </>
-          )}
+              </>)}
+              {!isBorrowing && r.status==='selected' && r.payment_confirmed && (
+  <button
+    style={btn(true,true)}
+    onClick={async()=>{
+      const res = await act(api.finalizeBorrow, r.id)
+      if(res && !res.error){
+        showToast('Borrow confirmed!')
+        await reload()
+      }
+    }}
+  >
+    Confirm Payment
+  </button>
+)}
+            
+          
           {!isBorrowing && r.listing_type !== 'lost_found' && ['active','overdue'].includes(r.status) && (
           <button
   style={btn(true,true)}
@@ -666,10 +682,14 @@ const activeCount = borrowing.filter(r =>
 }
 
 // ── ITEM CARD ─────────────────────────────────────────────────────────────────
-function ItemCard({ item, currentUserId, onRequest }) {
+function ItemCard({ item, currentUserId, onRequest, myRequests = [] }) {
   const isYours  = item.owner_id === currentUserId
   const isLF     = item.listing_type === 'lost_found'
-  const canAct   = !isYours && (isLF || item.status==='available')
+  const alreadyRequested = myRequests.some(
+  r => r.item_id === item.id &&
+       ['pending','selected','active'].includes(r.status)
+)
+  const canAct = !isYours && !alreadyRequested && (isLF || item.status==='available')
   const firstPhoto = item.images?.[0]
 
   return (
@@ -725,6 +745,7 @@ export default function App() {
   const [borrowItem, setBorrow] = useState(null)
   const [tick,    setTick]   = useState(0)
   const [toast,   showToast] = useToast()
+  const [myRequests, setMyRequests] = useState([])
   const refresh = useCallback(()=>setTick(t=>t+1),[])
 
   useEffect(()=>{
@@ -745,6 +766,9 @@ api.getItems({
     .then(r=>{ if(!r.error) setItems(r.items||[]) })
 }
     api.getStats().then(r=>{ if(!r.error) setStats(r) })
+      api.getMyRequests().then(r => {
+  if (!r.error) setMyRequests(r.requests || [])
+})
   },[user,tab,cat,avail,search,tick])
 
   function handleLogout() { api.clearSession(); setUser(null) }
@@ -850,9 +874,17 @@ api.getItems({
             {items.length===0 && tab==='marketplace'
               ? <div style={{ textAlign:'center', padding:'3rem 0', color:'#999', fontSize:14 }}>No items match your filter.</div>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(195px,1fr))', gap:14 }}>
-                  {items
-  .filter(item => item.status !== 'closed') // 🔥 IMPORTANT
-  .map(item =><ItemCard key={item.id+'-'+tick} item={item} currentUserId={user.id} onRequest={i=>setBorrow(i)} />)}
+{items
+  .filter(item => item.status !== 'closed')
+  .map(item =>
+    <ItemCard 
+      key={item.id+'-'+tick} 
+      item={item} 
+      currentUserId={user.id} 
+      onRequest={i=>setBorrow(i)}
+      myRequests={myRequests}   // 🔥 THIS IS THE FIX
+    />
+)}
                 </div>
             }
           </div>

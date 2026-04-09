@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS borrow_requests (
   message         TEXT DEFAULT '',
   status          TEXT NOT NULL DEFAULT 'pending'
                     CHECK (status IN (
-                      'pending','payment_pending','active',
+                      'pending','selected','active',
                       'returned','declined','overdue'
                     )),
   total_amount    NUMERIC(10,2) DEFAULT 0,

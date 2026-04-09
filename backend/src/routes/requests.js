@@ -50,7 +50,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     const total  = item.is_paid ? parseFloat(item.price_per_day) * days : 0
     // Paid items start as payment_pending; free items start as pending
-    const status = item.is_paid ? 'payment_pending' : 'pending'
+    const status = 'pending'
 
     const req_ = await queryOne(`
       INSERT INTO borrow_requests(item_id,borrower_id,owner_id,requested_days,message,status,total_amount)
@@ -65,56 +65,90 @@ router.post('/', requireAuth, async (req, res) => {
 router.patch('/:id/confirm-payment', requireAuth, async (req, res) => {
   try {
     const r = await queryOne('SELECT * FROM borrow_requests WHERE id=$1', [req.params.id])
-    if (!r) return res.status(404).json({ error: 'Not found.' })
-    if (r.borrower_id !== req.userId) return res.status(403).json({ error: 'Not your request.' })
-    if (r.status !== 'payment_pending') return res.status(409).json({ error: 'Not in payment_pending state.' })
-    // Mark payment as sent by borrower → moves to pending for lender to approve
-    await query("UPDATE borrow_requests SET status='pending', payment_confirmed=TRUE WHERE id=$1", [r.id])
-    res.json({ success: true })
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Failed.' }) }
-})
 
-router.patch('/:id/approve', requireAuth, async (req, res) => {
+    if (!r) return res.status(404).json({ error: 'Not found.' })
+
+    // 🔥 ONLY selected borrower can confirm payment
+    if (r.status !== 'selected') {
+      return res.status(409).json({ error: 'Not in selected state.' })
+    }
+
+    await query(
+      "UPDATE borrow_requests SET payment_confirmed=TRUE WHERE id=$1",
+      [r.id]
+    )
+
+    res.json({ success: true })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed.' })
+  }
+})
+// PATCH /api/requests/:id/finalize  — owner confirms payment & gives item
+router.patch('/:id/finalize', requireAuth, async (req, res) => {
   try {
-    const r    = await queryOne('SELECT * FROM borrow_requests WHERE id=$1', [req.params.id])
+    const r = await queryOne('SELECT * FROM borrow_requests WHERE id=$1', [req.params.id])
     const item = await queryOne('SELECT * FROM items WHERE id=$1', [r?.item_id])
 
     if (!r || !item) return res.status(404).json({ error: 'Not found.' })
     if (item.owner_id !== req.userId) return res.status(403).json({ error: 'Not your item.' })
-    if (r.status !== 'pending') return res.status(409).json({ error: 'Request not in pending state.' })
 
-    // ✅ LOST & FOUND FLOW (FINAL FIX)
-    if (item.listing_type === 'lost_found') {
-
-      // 1. Mark request completed
-      await query(
-        "UPDATE borrow_requests SET status='completed', approved_at=NOW() WHERE id=$1",
-        [r.id]
-      )
-
-      // 2. Mark item as resolved (IMPORTANT)
-      await query(
-    "UPDATE items SET status='closed', is_deleted=TRUE WHERE id=$1",
-    [item.id]
-  )
-
-      return res.json({ success: true, status: 'completed' })
+    // 🔥 must be selected + payment done
+    if (r.status !== 'selected' || !r.payment_confirmed) {
+      return res.status(409).json({ error: 'Payment not confirmed yet.' })
     }
 
-    // ✅ NORMAL BORROW FLOW
     const dueAt = new Date(Date.now() + r.requested_days * 864e5)
 
+    // 1️⃣ mark this request active
     await query(
-      "UPDATE borrow_requests SET status='active', approved_at=NOW(), due_at=$1 WHERE id=$2",
+      "UPDATE borrow_requests SET status='active', due_at=$1 WHERE id=$2",
       [dueAt, r.id]
     )
 
+    // 2️⃣ mark item borrowed
     await query(
       "UPDATE items SET status='borrowed' WHERE id=$1",
       [item.id]
     )
 
+    // 3️⃣ 🔥 decline ALL other requests
+    await query(
+      `UPDATE borrow_requests 
+       SET status='declined' 
+       WHERE item_id=$1 AND id<>$2 AND status IN ('pending','selected')`,
+      [item.id, r.id]
+    )
+
     res.json({ success: true, dueAt })
+
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed.' })
+  }
+})
+
+router.patch('/:id/approve', requireAuth, async (req, res) => {
+  try {
+    const r = await queryOne('SELECT * FROM borrow_requests WHERE id=$1', [req.params.id])
+    const item = await queryOne('SELECT * FROM items WHERE id=$1', [r?.item_id])
+
+    if (!r || !item) return res.status(404).json({ error: 'Not found.' })
+    if (item.owner_id !== req.userId) return res.status(403).json({ error: 'Not your item.' })
+
+    // 🔥 ONLY allow from pending
+    if (r.status !== 'pending') {
+      return res.status(409).json({ error: 'Request not in pending state.' })
+    }
+
+    // 🔥 STEP 1: mark as selected
+    await query(
+      "UPDATE borrow_requests SET status='selected', approved_at=NOW() WHERE id=$1",
+      [r.id]
+    )
+
+    return res.json({ success: true, stage: 'selected' })
 
   } catch (err) {
     console.error(err)

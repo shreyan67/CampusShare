@@ -78,6 +78,7 @@ export function listItem(data) {
 export const getMyRequests    = ()  => get('/requests/mine')
 export const requestBorrow    = b   => post('/requests', b)
 export const confirmPayment   = id  => patch(`/requests/${id}/confirm-payment`)
+export const finalizeBorrow   = id => patch(`/requests/${id}/finalize`)
 export const approveRequest   = id  => patch(`/requests/${id}/approve`)
 export const declineRequest   = id  => patch(`/requests/${id}/decline`)
 export const confirmReturn    = id  => patch(`/requests/${id}/return`)

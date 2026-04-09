@@ -481,13 +481,22 @@ function ActivityModal({ open, onClose, refresh, showToast }) {
 
   async function reload() { const r=await api.getMyRequests(); if(!r.error) setReqs(r.requests||[]); refresh() }
 
-  async function act(fn, ...args) {
-    const r = await fn(...args)
-    if (r.error) return showToast(r.error)
-    if (r.newTier) { const me=await api.getMe(); if(!me.error) setUser(me.user) }
+ async function act(fn, ...args) {
+  try {
+    const res = await fn(...args)
+
+    if (res?.error) {
+      return res   // ❗ don't reload on error
+    }
+
     await reload()
-    return r
+    return res
+
+  } catch (err) {
+    console.error(err)
+    return { error: 'Something went wrong' }
   }
+}
 
   const borrowing = reqs.filter(r=>r.borrower_id===user?.id)
   const lending   = reqs.filter(r=>r.owner_id===user?.id)
@@ -593,13 +602,18 @@ const activeCount = borrowing.filter(r =>
   style={btn(true,true)}
   onClick={async () => {
     const res = await act(api.confirmReturn, r.id)
-    if (res) {
-      showToast(res.onTime
-        ? 'Return confirmed! Reputation updated.'
-        : 'Return confirmed (late).'
-      )
-      await reload() // ✅ inside function
-    }
+ 
+console.log("RETURN RESPONSE:", res)
+if (!res || res.error) {
+  showToast("Return failed")
+  return
+}
+if (res.onTime === false) {
+  showToast('Return confirmed (late).')
+} else {
+  showToast('Return confirmed!')
+}
+
   }}
 >
   Confirm return

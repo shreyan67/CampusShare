@@ -178,7 +178,7 @@ router.patch('/:id/return', requireAuth, async (req, res) => {
 
     const onTime = new Date() <= new Date(r.due_at)
     await query("UPDATE borrow_requests SET status='returned',returned_at=NOW() WHERE id=$1", [r.id])
-    await query("UPDATE items SET status='closed', is_deleted=TRUE WHERE id=$1", [item.id])
+    await query("UPDATE items SET status='available', is_deleted=TRUE WHERE id=$1", [item.id])
     if (onTime) {
       await query('UPDATE users SET return_count=return_count+1 WHERE id=$1', [r.borrower_id])
       await promoteIfEligible(r.borrower_id)

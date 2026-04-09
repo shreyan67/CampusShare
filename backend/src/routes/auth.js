@@ -75,7 +75,7 @@ router.post('/signup', async (req, res) => {
     const { devOtp } = await sendOtpEmail(email, name, otp)
 
     const resp = { userId: user.id, collegeName: college.name }
-    if (devOtp) resp._devOtp = devOtp
+    if (devOtp) resp.devOtp = devOtp
 
     res.status(201).json(resp)
 
@@ -99,7 +99,7 @@ router.post('/login', async (req, res) => {
     const { devOtp } = await sendOtpEmail(email, user.name, otp)
 
     const resp = { userId: user.id }
-    if (devOtp) resp._devOtp = devOtp
+    if (devOtp) resp.devOtp = devOtp
     res.json(resp)
   } catch (err) {
     console.error('Login error:', err)

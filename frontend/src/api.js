@@ -28,7 +28,11 @@ async function req(method, path, body) {
   } catch {
     data = null
   }
-
+// 🔥 DEV OTP CAPTURE
+if (data && data.devOtp) {
+  window.__DEV_OTP__ = data.devOtp
+  console.log("DEV OTP:", data.devOtp)
+}
   // 🔥 IMPORTANT FIX
   if (!res.ok) {
     return { error: data?.error || 'Request failed' }

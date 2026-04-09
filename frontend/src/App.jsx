@@ -273,6 +273,11 @@ async function doSignup() {
                 autoComplete="one-time-code"
                 inputMode="numeric"
               />
+              {window.__DEV_OTP__ && (
+  <p style={{ marginTop: "10px", color: "#888" }}>
+    Dev OTP: <b>{window.__DEV_OTP__}</b>
+  </p>
+)}
             </div>
             <button style={{ ...btn(true), width:'100%', padding:'10px' }} onClick={doOtp} disabled={loading}>
               {loading ? 'Verifying…' : 'Verify & enter →'}

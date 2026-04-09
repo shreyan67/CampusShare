@@ -44,29 +44,10 @@ async function verifyOtp(userId, otp) {
 
 // ── SEND EMAIL (RESEND) ────────────────────
 async function sendOtpEmail(email, name, otp) {
-  try {
-    console.log("Sending OTP via Resend to:", email)
+  console.log("📩 OTP for", email, "=", otp)
 
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: email,
-      subject: `CampusShare verification code`,
-      html: `
-        <div style="font-family:sans-serif">
-          <h2>Hi ${name},</h2>
-          <p>Your OTP is:</p>
-          <h1>${otp}</h1>
-          <p>Valid for 5 minutes</p>
-        </div>
-      `,
-    })
-
-    return {}
-
-  } catch (err) {
-    console.error("❌ Resend error:", err)
-    return { devOtp: otp } // fallback
-  }
+  // 🔥 Always return OTP for frontend (DEV MODE)
+  return { devOtp: otp }
 }
 
 module.exports = {

@@ -789,7 +789,7 @@ api.getItems({
   function handleLogout() { api.clearSession(); setUser(null) }
 
   if (!user) return <AuthScreen onLogin={u=>setUser(u)} />
-  if (isAdmin) return <Admin />;
+ if (isAdmin) return <Admin goBack={() => setIsAdmin(false)} />;
 
   const CAT_COUNTS = CATEGORIES.reduce((a,c)=>{ a[c]=items.filter(i=>i.category===c).length; return a },{})
   const tier = TRUST_TIERS[user.trust_tier] || TRUST_TIERS.newcomer

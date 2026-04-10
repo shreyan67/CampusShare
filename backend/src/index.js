@@ -110,7 +110,51 @@ app.delete('/admin/delete-item/:id', adminAuth, async (req, res) => {
     res.status(500).send("Error deleting item")
   }
 })
+app.delete("/admin/delete-all-items", adminAuth, async (req, res) => {
+  try {
+    await pool.query("DELETE FROM items");
+    res.json({ message: "All items deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting all items");
+  }
+});
+app.delete("/admin/delete-user/:id", adminAuth, async (req, res) => {
+  const client = await pool.connect();
 
+  try {
+    const { id } = req.params;
+
+    await client.query("BEGIN");
+
+    // ✅ correct table name
+    await client.query(
+      "DELETE FROM borrow_requests WHERE borrower_id = $1 OR owner_id = $1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM items WHERE owner_id = $1",
+      [id]
+    );
+
+    await client.query(
+      "DELETE FROM users WHERE id = $1",
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ message: "User deleted completely ✅" });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("DELETE USER ERROR:", err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
 // ===== 404 =====
 app.use((_req, res) => res.status(404).json({ error: 'Route not found.' }))
 

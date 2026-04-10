@@ -5,7 +5,7 @@ export default function Admin({ goBack }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const BASE_URL ="http://localhost:4000"; // your backend
+  const BASE_URL ="https://campusshare-backend-zht7.onrender.com"; // your backend
 
   // 🔥 Fetch items
   const fetchItems = async () => {
